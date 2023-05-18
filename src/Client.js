@@ -23,14 +23,14 @@ const NoAuth = require('./authStrategies/NoAuth');
  * @param {object} options.puppeteer - Puppeteer launch options. View docs here: https://github.com/puppeteer/puppeteer/
  * @param {number} options.qrMaxRetries - How many times should the qrcode be refreshed before giving up
  * @param {string} options.restartOnAuthFail  - @deprecated This option should be set directly on the LegacySessionAuth.
- * @param {object} options.session - @deprecated Only here for backwards-compatibility. You should move to using LocalAuth, or set the authStrategy to LegacySessionAuth explicitly. 
+ * @param {object} options.session - @deprecated Only here for backwards-compatibility. You should move to using LocalAuth, or set the authStrategy to LegacySessionAuth explicitly.
  * @param {number} options.takeoverOnConflict - If another whatsapp web session is detected (another browser), take over the session in the current browser
  * @param {number} options.takeoverTimeoutMs - How much time to wait before taking over the session
  * @param {string} options.userAgent - User agent to use in puppeteer
- * @param {string} options.ffmpegPath - Ffmpeg path to use when formating videos to webp while sending stickers 
+ * @param {string} options.ffmpegPath - Ffmpeg path to use when formating videos to webp while sending stickers
  * @param {boolean} options.bypassCSP - Sets bypassing of page's Content-Security-Policy.
  * @param {object} options.proxyAuthentication - Proxy Authentication object.
- * 
+ *
  * @fires Client#qr
  * @fires Client#authenticated
  * @fires Client#auth_failure
@@ -54,7 +54,9 @@ class Client extends EventEmitter {
         super();
 
         this.options = Util.mergeDefault(DefaultOptions, options);
-        
+
+        process.setMaxListeners(40);
+
         if(!this.options.authStrategy) {
             if(Object.prototype.hasOwnProperty.call(this.options, 'session')) {
                 process.emitWarning(
@@ -107,7 +109,7 @@ class Client extends EventEmitter {
         if (this.options.proxyAuthentication !== undefined) {
             await page.authenticate(this.options.proxyAuthentication);
         }
-      
+
         await page.setUserAgent(this.options.userAgent);
         if (this.options.bypassCSP) await page.setBypassCSP(true);
 
@@ -258,8 +260,8 @@ class Client extends EventEmitter {
                 await page.waitForSelector(INTRO_IMG_SELECTOR, { timeout: 0 });
             } catch(error) {
                 if (
-                    error.name === 'ProtocolError' && 
-                    error.message && 
+                    error.name === 'ProtocolError' &&
+                    error.message &&
                     error.message.match(/Target closed/)
                 ) {
                     // something has called .destroy() while waiting
@@ -376,7 +378,7 @@ class Client extends EventEmitter {
                  * Emitted when a message is deleted for everyone in the chat.
                  * @event Client#message_revoke_everyone
                  * @param {Message} message The message that was revoked, in its current state. It will not contain the original message's data.
-                 * @param {?Message} revoked_msg The message that was revoked, before it was revoked. It will contain the message's original data. 
+                 * @param {?Message} revoked_msg The message that was revoked, before it was revoked. It will contain the message's original data.
                  * Note that due to the way this data is captured, it may be possible that this param will be undefined.
                  */
                 this.emit(Events.MESSAGE_REVOKED_EVERYONE, message, revoked_msg);
@@ -453,7 +455,7 @@ class Client extends EventEmitter {
 
         await page.exposeFunction('onChatUnreadCountEvent', async (data) =>{
             const chat = await this.getChatById(data.id);
-            
+
             /**
              * Emitted when the chat unread count changes
              */
@@ -568,7 +570,7 @@ class Client extends EventEmitter {
              */
             this.emit(Events.CHAT_REMOVED, new Chat(this, chat));
         });
-        
+
         await page.exposeFunction('onArchiveChatEvent', (chat, currState, prevState) => {
             /**
              * Emitted when a chat is archived/unarchived
@@ -591,13 +593,13 @@ class Client extends EventEmitter {
             window.Store.Call.on('add', (call) => { window.onIncomingCall(call); });
             window.Store.Chat.on('remove', async (chat) => { window.onRemoveChatEvent(await window.WWebJS.getChatModel(chat)); });
             window.Store.Chat.on('change:archive', async (chat, currState, prevState) => { window.onArchiveChatEvent(await window.WWebJS.getChatModel(chat), currState, prevState); });
-            window.Store.Msg.on('add', (msg) => { 
+            window.Store.Msg.on('add', (msg) => {
                 if (msg.isNewMsg) {
                     if(msg.type === 'ciphertext') {
                         // defer message event until ciphertext is resolved (type changed)
                         msg.once('change:type', (_msg) => window.onAddMessageEvent(window.WWebJS.getMessageModel(_msg)));
                     } else {
-                        window.onAddMessageEvent(window.WWebJS.getMessageModel(msg)); 
+                        window.onAddMessageEvent(window.WWebJS.getMessageModel(msg));
                     }
                 }
             });
@@ -671,7 +673,7 @@ class Client extends EventEmitter {
      * Mark as seen for the Chat
      *  @param {string} chatId
      *  @returns {Promise<boolean>} result
-     * 
+     *
      */
     async sendSeen(chatId) {
         const result = await this.pupPage.evaluate(async (chatId) => {
@@ -705,7 +707,7 @@ class Client extends EventEmitter {
      * @param {string} chatId
      * @param {string|MessageMedia|Location|Contact|Array<Contact>|Buttons|List} content
      * @param {MessageSendOptions} [options] - Options used when sending the message
-     * 
+     *
      * @returns {Promise<Message>} Message that was just sent
      */
     async sendMessage(chatId, content, options = {}) {
@@ -748,7 +750,7 @@ class Client extends EventEmitter {
             internalOptions.list = content;
             content = '';
         }
-        
+
         if (internalOptions.sendMediaAsSticker && internalOptions.attachment) {
             internalOptions.attachment = await Util.formatToWebpSticker(
                 internalOptions.attachment, {
@@ -799,15 +801,15 @@ class Client extends EventEmitter {
      */
     async getChats() {
         let chats = await this.pupPage.evaluate(async () => {
-            return await window.WWebJS.getChats();
+            return await window?.WWebJS?.getChats() || [];
         });
 
-        return chats.map(chat => ChatFactory.create(this, chat));
+        return chats?.map(chat => ChatFactory?.create(this, chat)) || [];
     }
 
     /**
      * Get chat instance by ID
-     * @param {string} chatId 
+     * @param {string} chatId
      * @returns {Promise<Chat>}
      */
     async getChatById(chatId) {
@@ -845,7 +847,7 @@ class Client extends EventEmitter {
 
     /**
      * Returns an object with information about the invite code's group
-     * @param {string} inviteCode 
+     * @param {string} inviteCode
      * @returns {Promise<object>} Invite information
      */
     async getInviteInfo(inviteCode) {
@@ -892,7 +894,7 @@ class Client extends EventEmitter {
     }
 
     /**
-     * Sets the current user's display name. 
+     * Sets the current user's display name.
      * This is the name shown to WhatsApp users that have not added you as a contact beside your number in groups and in your profile.
      * @param {string} displayName New display name
      * @returns {Promise<Boolean>}
@@ -912,10 +914,10 @@ class Client extends EventEmitter {
 
         return couldSet;
     }
-    
+
     /**
      * Gets the current connection state for the client
-     * @returns {WAState} 
+     * @returns {WAState}
      */
     async getState() {
         return await this.pupPage.evaluate(() => {
@@ -1054,7 +1056,7 @@ class Client extends EventEmitter {
                 throw err;
             }
         }, contactId);
-        
+
         return profilePic ? profilePic.eurl : undefined;
     }
 
@@ -1107,7 +1109,7 @@ class Client extends EventEmitter {
     }
 
     /**
-     * Get the registered WhatsApp ID for a number. 
+     * Get the registered WhatsApp ID for a number.
      * Will return null if the number is not registered on WhatsApp.
      * @param {string} number Number or ID ("@c.us" will be automatically appended if not specified)
      * @returns {Promise<Object|null>}
@@ -1210,7 +1212,7 @@ class Client extends EventEmitter {
     }
 
     /**
-     * Get all Labels assigned to a chat 
+     * Get all Labels assigned to a chat
      * @param {string} chatId
      * @returns {Promise<Array<Label>>}
      */
