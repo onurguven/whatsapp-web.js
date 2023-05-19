@@ -60,7 +60,7 @@ exports.ExposeStore = (moduleRaidStr) => {
         ...window.mR.findModule('toWebpSticker')[0],
         ...window.mR.findModule('addWebpMetadata')[0]
     };
-  
+
     window.Store.GroupUtils = {
         ...window.mR.findModule('createGroup')[0],
         ...window.mR.findModule('setGroupDescription')[0],
@@ -130,8 +130,8 @@ exports.LoadUtils = () => {
             let quotedMessage = window.Store.Msg.get(options.quotedMessageId);
 
             // TODO remove .canReply() once all clients are updated to >= v2.2241.6
-            const canReply = window.Store.ReplyUtils ? 
-                window.Store.ReplyUtils.canReplyMsg(quotedMessage.unsafe()) : 
+            const canReply = window.Store.ReplyUtils ?
+                window.Store.ReplyUtils.canReplyMsg(quotedMessage.unsafe()) :
                 quotedMessage.canReply();
 
             if (canReply) {
@@ -202,7 +202,7 @@ exports.LoadUtils = () => {
                 }
             }
         }
-        
+
         let buttonOptions = {};
         if(options.buttons){
             let caption;
@@ -245,11 +245,12 @@ exports.LoadUtils = () => {
 
         const meUser = window.Store.User.getMaybeMeUser();
         const isMD = window.Store.MDBackend;
+        const newId = await window.Store.MsgKey.newId();
 
         const newMsgId = new window.Store.MsgKey({
             from: meUser,
             to: chat.id,
-            id: window.Store.MsgKey.newId(),
+            id: newId,
             participant: isMD && chat.id.isGroup() ? meUser : undefined,
             selfDir: 'out',
         });
@@ -430,7 +431,7 @@ exports.LoadUtils = () => {
             await window.Store.GroupMetadata.update(chatWid);
             res.groupMetadata = chat.groupMetadata.serialize();
         }
-        
+
         res.lastMessage = null;
         if (res.msgs && res.msgs.length) {
             const lastMessage = window.Store.Msg.get(chat.lastReceivedKey._serialized);
@@ -438,7 +439,7 @@ exports.LoadUtils = () => {
                 res.lastMessage = window.WWebJS.getMessageModel(lastMessage);
             }
         }
-        
+
         delete res.msgs;
         delete res.msgUnsyncedButtonReplyMsgs;
         delete res.unsyncedButtonReplies;
